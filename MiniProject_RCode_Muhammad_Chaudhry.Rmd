@@ -1,0 +1,171 @@
+--- 
+title: "BTMA 431 - Mini Project - Metacritic Video Game Analysis" 
+author: Muhammad Chaudhry 
+--- 
+
+```{r} 
+
+#packages to install 
+
+install.packages("stringr") 
+install.packages("ggplot2") 
+install.packages("broom") 
+install.package("dplyr")
+``` 
+
+```{r} 
+
+#libraries to load 
+
+library(stringr) 
+library(ggplot2) 
+library(broom) 
+library(dplyr)
+``` 
+
+```{r} 
+#Loading of the data
+Games <- read.csv("metacritic_games.csv") 
+
+#cleaning data
+
+#removing any rows with incomplete data 
+Games <- Games[-which(Games$developer == ""), ] 
+Games <- Games[-which(Games$number_players == ""), ] 
+Games <- Games[-which(Games$rating == ""), ] 
+
+#output a summary table to check all variables are properly set
+summary(Games)
+```
+
+```{r} 
+################ 
+###Question 1### 
+################ 
+
+#Is there a difference in the way users review games vs. the way critics do? 
+#H0: There is no significant statistical difference between the means of the two groups 
+#H1: There is a significant statistical difference between the means of the two groups 
+
+#Run an unpaired t-test to test the two means 
+
+t.test(Games$metascore, Games$user_score) 
+
+#This test results in a p-value of 2.2e-16 which is well below our alpha value of 0.05. #This means that we reject the null hypothesis and accept the alternative which states that there is a significant statistical difference between the means of user reviews and critic reviews.
+
+################ 
+###Question 2### 
+################ 
+
+#Do certain variables factor more into a user review score vs a metascore 
+#To do this we will run numerous regressions to test each variable of interest 
+
+#Platform 
+
+#Platform comparison for metascores 
+
+lm1 <- lm(Games$metascore ~ Games$platform) 
+summary(lm1) 
+
+#Platform comparison for user reviews 
+
+lm2 <- lm(Games$user_score ~ Games$platform) 
+summary(lm2) 
+
+#Running the regression for platform we can see that for critics no particular platform stands out, but for users PC, PS4, and Xbox ONE's all have high statistical significance when calculating user scores. 
+
+#Genre 
+
+#Genre comparison for metascores 
+
+lm3 <- lm(Games$metascore ~ Games$genre) 
+summary(lm3) 
+
+#Genre comparison for user reviews 
+
+lm4 <- lm(Games$user_score ~ Games$genre) 
+
+summary(lm4) 
+
+#When comparing genre in its significance in scoring we can see that for both critics and users some genres do play a significant role. For critics the biggest players include RPG related genres, while for user reviews the biggest player is the arcade genre which drastically reduces the overall score. 
+
+#Rating 
+
+#rating comparison for metascores 
+
+lm5 <- lm(Games$metascore ~ Games$rating) 
+summary(lm5) 
+
+#rating comparison for user reviews 
+
+lm6 <- lm(Games$user_score ~ Games$rating) 
+summary(lm6) 
+
+#Seems that scores for both users and critics are equally effected by ratings with not specific rating standing out
+
+################ 
+###Question 3### 
+################ 
+
+#Has there been an improvement in the average game scores over the years? 
+
+#Creation of new column with just year 
+
+Games$release_year <- as.factor(word(Games$release_date, -1)) 
+
+MetaScore_Means <- aggregate(x = Games$metascore, by = list(Games$release_year), FUN = mean) 
+
+UserScore_Means <- aggregate(x = Games$user_score, by = list(Games$release_year), FUN = mean) 
+
+#calculating mean of scores for each year for metascore and user score 
+
+Scores_Mean <- left_join(MetaScore_Means, UserScore_Means, by = "Group.1") 
+
+colnames(Scores_Mean)[1] <- "Year" 
+colnames(Scores_Mean)[2] <- "Metascore" 
+colnames(Scores_Mean)[3] <- "Userscore" 
+
+#plotting of mean scores over years for both meta and userscores 
+
+plot <- ggplot() + 
+        geom_point(data = Scores_Mean, aes(x = Year, y = Metascore, color = "red")) + 
+        geom_point(data = Scores_Mean, aes(x = Year, y = Userscore, color = "blue")) + 
+        scale_color_discrete(name = "Legend", labels = c("Metascore", "Userscore")) + 
+        ggtitle("Metascore vs. Userscore", ) + theme(plot.title = element_text(hjust = 0.5)) + 
+        xlab("Year") + ylab("Average Score") 
+
+plot 
+
+#Upon reviewing the plot we can see that over the past few years there has been a significant decrease in the average user score while there has been a slight uptick in the metascore. One inference we can take from this is that people should not put too much stock in the user score as it seems that overall these scores a more susceptible to bias than metascores when we also take into account all the regression analysis' we completed earlier. 
+```
+
+```{r} 
+
+#To complete our visual we will export. 
+
+#Export of linear models 
+
+#will use the tidy function from the broom library to tidy up the linear model for export 
+
+clean_lm1 <- tidy(lm1) 
+write.csv(clean_lm1, "lm1.csv") 
+
+clean_lm2 <- tidy(lm2) 
+write.csv(clean_lm2, "lm2.csv") 
+
+clean_lm3 <- tidy(lm3) 
+write.csv(clean_lm3, "lm3.csv") 
+
+clean_lm4 <- tidy(lm4) 
+write.csv(clean_lm4, "lm4.csv") 
+
+clean_lm5 <- tidy(lm5) 
+write.csv(clean_lm5, "lm5.csv") 
+
+clean_lm6 <- tidy(lm6) 
+write.csv(clean_lm6, "lm6.csv") 
+
+#Exporting of cleaned complete data 
+
+write.csv(Scores_Mean, "Scores_Mean.csv") 
+```
